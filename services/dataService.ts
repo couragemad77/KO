@@ -29,9 +29,10 @@ const DEPARTMENTS_COL = "departments";
 export const dataService = {
   // Real-time listener for the Home Screen
   subscribeToNewLogs: (callback: (log: AttendanceLog) => void) => {
+    // Increased window to 60 seconds to handle server-client clock drift
     const q = query(
       collection(db, LOGS_COL),
-      where("timestamp", ">", Date.now() - 10000), // Only logs from the last 10 seconds
+      where("timestamp", ">", Date.now() - 60000), 
       orderBy("timestamp", "desc"),
       limit(1)
     );
@@ -62,13 +63,11 @@ export const dataService = {
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notice));
   },
 
-  // Added updateNotice to fix AdminDashboard error
   updateNotice: async (id: string, updated: Partial<Notice>): Promise<void> => {
     const docRef = doc(db, NOTICES_COL, id);
     await updateDoc(docRef, { ...updated, updatedAt: Date.now() });
   },
 
-  // Added deleteNotice to fix AdminDashboard error
   deleteNotice: async (notice: Notice): Promise<void> => {
     if (notice.id) {
       await deleteDoc(doc(db, NOTICES_COL, notice.id));
@@ -120,13 +119,11 @@ export const dataService = {
     return { id: docRef.id, name };
   },
 
-  // Added updateDepartment to fix AdminDashboard error
   updateDepartment: async (id: string, name: string): Promise<void> => {
     const docRef = doc(db, DEPARTMENTS_COL, id);
     await updateDoc(docRef, { name });
   },
 
-  // Added deleteDepartment to fix AdminDashboard error
   deleteDepartment: async (id: string): Promise<void> => {
     await deleteDoc(doc(db, DEPARTMENTS_COL, id));
   },
@@ -149,7 +146,6 @@ export const dataService = {
     await setDoc(docRef, employee, { merge: true });
   },
 
-  // Added deleteEmployee to fix AdminDashboard error
   deleteEmployee: async (id: string): Promise<void> => {
     await deleteDoc(doc(db, EMPLOYEES_COL, id));
   },
@@ -213,13 +209,11 @@ export const dataService = {
     await batch.commit();
   },
 
-  // Added recallEmployeeFromOutsideWork to fix OutsideWork error
   recallEmployeeFromOutsideWork: async (employeeId: string): Promise<void> => {
     const docRef = doc(db, EMPLOYEES_COL, employeeId);
     await updateDoc(docRef, { outsideWorkUntil: null });
   },
 
-  // Added extendOutsideWork to fix OutsideWork error
   extendOutsideWork: async (employeeId: string, days: number): Promise<void> => {
     const empRef = doc(db, EMPLOYEES_COL, employeeId);
     const empSnap = await getDoc(empRef);
@@ -341,12 +335,10 @@ export const dataService = {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
   },
 
-  // Added addLog to fix VisitorModal error
   addLog: async (log: Omit<AttendanceLog, 'id'>): Promise<void> => {
     await addDoc(collection(db, LOGS_COL), log);
   },
 
-  // Added getActiveVisitors to fix VisitorModal error
   getActiveVisitors: async (): Promise<{id: string, name: string}[]> => {
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -386,7 +378,6 @@ export const dataService = {
     return (snap.docs[0].data() as AttendanceLog).action;
   },
 
-  // Added getInformalLogs to fix AdminDashboard error
   getInformalLogs: async (): Promise<InformalLog[]> => {
     const q = query(collection(db, INFORMAL_LOGS_COL), orderBy("timeOut", "desc"));
     const snap = await getDocs(q);
@@ -435,7 +426,6 @@ export const dataService = {
     }
   },
 
-  // Updated processVerification to return error field to fix CameraModal error
   processVerification: async (employee: Employee, requestedAction: AttendanceAction, confidence: number): Promise<{ success: boolean; employee?: Employee; error?: string }> => {
     try {
       const now = Date.now();
