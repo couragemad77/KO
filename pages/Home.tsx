@@ -52,13 +52,17 @@ const Home: React.FC = () => {
   }, []);
 
   const handleBiometricDetection = (log: AttendanceLog) => {
-    // This runs when the device sends a log via Netlify to Firebase
+    // This runs when the device sends a log via Local Bridge to Firebase
     setLastUser({ name: log.subjectName, id: log.subjectId });
     setModalAction(log.action);
     setShowSuccessModal(true);
     
-    // Auto-close success modal after 5s
-    setTimeout(() => setShowSuccessModal(false), 5000);
+    // Reset modal after 6 seconds to be ready for the next person
+    const hideTimer = setTimeout(() => {
+        setShowSuccessModal(false);
+    }, 6000);
+
+    return () => clearTimeout(hideTimer);
   };
 
   const loadNotices = async () => {
