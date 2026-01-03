@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Daily Logging System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #ffffff;
+        color: #111827;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Prevent body scroll */
+        height: 100vh;
+        width: 100vw;
+      }
+      .clock-digit {
+        background: #f9fafb;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+        color: #059669;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .scan-line {
+        height: 3px;
+        background: linear-gradient(to right, transparent, #ef4444, transparent);
+        box-shadow: 0 0 12px 2px #ef4444;
+        animation: scan 2.5s linear infinite;
+      }
+      @keyframes scan {
+        0% { top: 0; }
+        100% { top: 100%; }
+      }
+      /* Prevent pull-to-refresh on mobile Chrome */
+      body {
+        overscroll-behavior-y: contain;
+      }
+      
+      @media print {
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+        body { overflow: visible !important; height: auto !important; width: auto !important; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "qrcode": "https://esm.sh/qrcode@^1.5.3",
+    "jsqr": "https://esm.sh/jsqr@^1.4.0",
+    "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
+    "jspdf": "https://esm.sh/jspdf@^2.5.1",
+    "@netlify/functions": "https://esm.sh/@netlify/functions@^5.1.2"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

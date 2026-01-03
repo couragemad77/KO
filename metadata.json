@@ -1,0 +1,7 @@
+{
+  "name": "FaceTrack Pro - Facial Recognition Attendance",
+  "description": "A professional-grade attendance system with facial recognition for employees and simple check-ins for visitors, featuring a modern Google-inspired UI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
