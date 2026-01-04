@@ -47,31 +47,31 @@ const Home: React.FC = () => {
     };
   }, []);
 
-<<<<<<< HEAD
+
   const handleBiometricDetection = (log: any) => {
     setLastUser({ name: log.subjectName || log.name, id: log.subjectId });
-=======
+
   const handleBiometricDetection = (log: AttendanceLog) => {
     // This runs when the device sends a log via Local Bridge to Firebase
     setLastUser({ name: log.subjectName, id: log.subjectId });
->>>>>>> e04b4b641b929ac46d04ef8f101f5a8e616294e6
+
     setModalAction(log.action);
     setLastDuration(log.duration);
     setShowSuccessModal(true);
     
-<<<<<<< HEAD
+
     // Auto-close success modal after 6 seconds
     setTimeout(() => {
         setShowSuccessModal(false);
     }, 6000);
-=======
+
     // Reset modal after 6 seconds to be ready for the next person
     const hideTimer = setTimeout(() => {
         setShowSuccessModal(false);
     }, 6000);
 
     return () => clearTimeout(hideTimer);
->>>>>>> e04b4b641b929ac46d04ef8f101f5a8e616294e6
+
   };
 
   const loadNotices = async () => {
