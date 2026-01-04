@@ -26,7 +26,7 @@ const SETTINGS_DOC = "config/system";
 const NOTICES_COL = "notices";
 const DEPARTMENTS_COL = "departments";
 
-<<<<<<< HEAD
+
 /**
  * Normalizes timestamps from various sources (seconds, milliseconds, Firestore, strings)
  * into a standard JS millisecond number.
@@ -38,7 +38,7 @@ const normalizeTs = (ts: any): number => {
   if (ts?.seconds) return ts.seconds * 1000;
   return 0;
 };
-=======
+ 
 export const dataService = {
   // Real-time listener for the Home Screen
   subscribeToNewLogs: (callback: (log: AttendanceLog) => void) => {
@@ -49,7 +49,7 @@ export const dataService = {
       orderBy("timestamp", "desc"),
       limit(1)
     );
->>>>>>> e04b4b641b929ac46d04ef8f101f5a8e616294e6
+ 
 
 export const dataService = {
   subscribeToLiveScans: (callback: (log: any) => void) => {
@@ -287,7 +287,7 @@ export const dataService = {
   deleteNotice: async (notice: Notice): Promise<void> => {
     if (notice.id) {
       await deleteDoc(doc(db, NOTICES_COL, notice.id));
->>>>>>> e04b4b641b929ac46d04ef8f101f5a8e616294e6
+ 
     }
   },
 
@@ -404,8 +404,7 @@ export const dataService = {
     await deleteDoc(doc(db, DEPARTMENTS_COL, id));
   },
 
-<<<<<<< HEAD
-=======
+ 
   getEmployees: async (): Promise<Employee[]> => {
     const q = query(collection(db, EMPLOYEES_COL), orderBy("name"));
     const snapshot = await getDocs(q);
@@ -550,7 +549,7 @@ export const dataService = {
     await batch.commit();
   },
 
->>>>>>> e04b4b641b929ac46d04ef8f101f5a8e616294e6
+ 
   wipeLogs: async (): Promise<void> => {
     const batch = writeBatch(db);
     const logsSnap = await getDocs(query(collection(db, LOGS_COL)));
@@ -560,8 +559,7 @@ export const dataService = {
     gateSnap.docs.forEach(d => batch.delete(d.ref));
     visSnap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
-<<<<<<< HEAD
-=======
+ 
   },
 
   getAttendanceSessions: async (logsInput?: AttendanceLog[]): Promise<AttendanceSession[]> => {
@@ -739,6 +737,6 @@ export const dataService = {
     if (timeStr > settings.lateThreshold) return 'LATE';
     if (timeStr < settings.earlyThreshold) return 'EARLY';
     return 'ON-TIME';
->>>>>>> e04b4b641b929ac46d04ef8f101f5a8e616294e6
+ 
   }
 };
