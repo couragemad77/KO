@@ -1,11 +1,12 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { Search, ArrowRight, Download, CheckCircle2, AlertCircle, ChevronDown, Calendar, LogIn, LogOut } from 'lucide-react';
-import { AttendanceLog, AttendanceSession, AttendanceAction, LogStatus } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Search, ArrowRight, Download, CheckCircle2, LogIn, LogOut } from 'lucide-react';
+import { AttendanceLog, AttendanceSession, Employee } from '../types';
 import { dataService } from '../services/dataService';
 
 interface VisitorLogsProps {
   logs: AttendanceLog[];
+  employees: Employee[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   onReportOpen: () => void;
@@ -17,23 +18,19 @@ type DateRange = 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL';
 
 const VisitorLogs: React.FC<VisitorLogsProps> = ({ 
   logs, 
+  employees,
   searchQuery, 
   setSearchQuery, 
   onReportOpen,
-  highlightedId,
   handleSuggestionClick
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>('ALL');
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      const s = await dataService.getAttendanceSessions(logs);
-      setSessions(s.filter(sess => sess.type === 'VISITOR'));
-    };
-    fetchSessions();
-  }, [logs]);
+  const sessions = useMemo(() => {
+    const allSessions = dataService.buildSessions(logs, employees);
+    return allSessions.filter(sess => sess.type === 'VISITOR');
+  }, [logs, employees]);
 
   const filteredSessions = useMemo(() => {
     const now = new Date();

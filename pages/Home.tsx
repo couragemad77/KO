@@ -1,19 +1,17 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { UserPlus, Flag, Bell, Calendar, DoorOpen, Fingerprint, Keyboard, Globe, ShieldAlert, Megaphone, CheckCircle2, ShieldX } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { UserPlus, Flag, Bell, Calendar, DoorOpen, Fingerprint, Keyboard, Globe, CheckCircle2, Megaphone } from 'lucide-react';
 import CameraModal from '../components/CameraModal';
 import VisitorModal from '../components/VisitorModal';
 import Notification from '../components/Notification';
 import SuccessModal from '../components/SuccessModal';
 import { dataService } from '../services/dataService';
-import { AttendanceAction, Employee, Notice, AttendanceLog } from '../types';
+import { AttendanceAction, Notice } from '../types';
 
 const Home: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState<AttendanceAction>(AttendanceAction.LOGIN);
   const [isVisitorModalOpen, setIsVisitorModalOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isSynced, setIsSynced] = useState(false);
   
@@ -25,7 +23,6 @@ const Home: React.FC = () => {
   const [notification, setNotification] = useState<{id: number, msg: string, sub: string, type: 'success' | 'error'} | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Sync clock and Setup Listeners
   useEffect(() => {
     const syncTime = async () => {
       const netTime = await dataService.getHarareTime();
@@ -36,8 +33,7 @@ const Home: React.FC = () => {
     syncTime();
     const timer = setInterval(() => setCurrentTime(prev => new Date(prev.getTime() + 1000)), 1000);
 
-    // Listen for Biometric logs from physical F22 device
-    const unsubscribe = dataService.subscribeToNewLogs((log: AttendanceLog) => {
+    const unsubscribe = dataService.subscribeToLiveScans((log: any) => {
       handleBiometricDetection(log);
     });
 
@@ -51,14 +47,16 @@ const Home: React.FC = () => {
     };
   }, []);
 
-  const handleBiometricDetection = (log: AttendanceLog) => {
-    // This runs when the device sends a log via Netlify to Firebase
-    setLastUser({ name: log.subjectName, id: log.subjectId });
+  const handleBiometricDetection = (log: any) => {
+    setLastUser({ name: log.subjectName || log.name, id: log.subjectId });
     setModalAction(log.action);
+    setLastDuration(log.duration);
     setShowSuccessModal(true);
     
-    // Auto-close success modal after 5s
-    setTimeout(() => setShowSuccessModal(false), 5000);
+    // Auto-close success modal after 6 seconds
+    setTimeout(() => {
+        setShowSuccessModal(false);
+    }, 6000);
   };
 
   const loadNotices = async () => {
@@ -66,13 +64,11 @@ const Home: React.FC = () => {
       const list = await dataService.getNotices();
       const active = list.filter(n => n.isActive && n.content.trim().length > 0);
       setActiveNotices(active);
-      setNoticeIndex(0);
     } catch (e) { console.error(e); }
   };
 
   const triggerAuthModal = (specificAction?: AttendanceAction) => {
     setModalAction(specificAction || AttendanceAction.LOGIN);
-    setStatus('idle');
     setIsModalOpen(true);
   };
 
@@ -141,7 +137,6 @@ const Home: React.FC = () => {
       <div className="flex-grow flex flex-col md:flex-row gap-4 lg:gap-8 items-stretch overflow-hidden min-h-0">
         <div className="flex-[1.2] flex flex-col items-center justify-center space-y-4 md:space-y-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl p-6 lg:p-10 relative">
           
-          {/* DIGITAL CLOCK */}
           <div className="flex items-center justify-center gap-2 md:gap-4 font-black text-slate-900">
             <div className="flex gap-1.5 md:gap-3 h-[8vh] md:h-[12vh]">
               <div className="w-[6vh] md:w-[9vh] flex items-center justify-center bg-slate-50 border border-slate-100 rounded-xl text-[5vh] md:text-[8vh] text-emerald-600 shadow-inner">{harareTimeParts.hh[0]}</div>
@@ -154,37 +149,39 @@ const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* DYNAMIC HOT-SCANNER CONTAINER */}
-          <div className="w-full max-w-sm flex flex-col items-center gap-6 lg:gap-10 p-8 lg:p-12 border-2 rounded-[3rem] transition-all bg-emerald-50/10 border-emerald-100 shadow-emerald-100/20 shadow-xl overflow-hidden relative">
-             <div className="relative w-24 h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center bg-white border-4 border-emerald-500 transition-all duration-500 shadow-sm">
-                <Fingerprint size={56} className="text-emerald-500 animate-pulse" />
+          <div className="w-full max-w-sm flex flex-col items-center gap-6 lg:gap-8 p-10 lg:p-14 border-2 rounded-[3.5rem] bg-emerald-50/10 border-emerald-100 shadow-emerald-100/20 shadow-2xl relative overflow-hidden group">
+             {/* Animated Scan Line */}
+             <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+                <div className="scan-line absolute w-full top-0"></div>
+             </div>
+
+             <div className="relative w-32 h-32 lg:w-40 lg:h-40 rounded-full flex items-center justify-center bg-white border-4 border-emerald-500 shadow-xl transition-transform group-hover:scale-105">
+                <Fingerprint size={80} className="text-emerald-500 animate-pulse" />
+                <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20 animate-ping"></div>
              </div>
              
-             <div className="text-center space-y-3 lg:space-y-4">
+             <div className="text-center space-y-4">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-2 border bg-emerald-100 text-emerald-600 border-emerald-200">
-                    <CheckCircle2 size={12}/> Hardware Active
+                  <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border bg-emerald-100 text-emerald-600 border-emerald-200">
+                    <CheckCircle2 size={14}/> Terminal Ready
                   </div>
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Security Terminal</h4>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm lg:text-base font-black uppercase text-gray-900 tracking-tight">
-                    Awaiting Biometric ID
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                    Scan Finger on Device
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight leading-none">
+                    Place Thumb
+                  </h3>
+                  <p className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-600">
+                    On Hardware Scanner
                   </p>
                 </div>
              </div>
 
-             <div className="flex gap-2 w-full mt-4">
-               <button 
-                  onClick={() => triggerAuthModal()}
-                  className="flex-1 flex items-center justify-center gap-3 py-4 rounded-[1.5rem] bg-black text-white font-black text-[9px] uppercase tracking-widest shadow-xl transition-all active:scale-95"
-               >
-                  <Keyboard size={16} /> PIN Fallback
-               </button>
-             </div>
+             <button 
+                onClick={() => triggerAuthModal()}
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-[1.5rem] bg-black text-white font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 mt-4"
+             >
+                <Keyboard size={18} /> PIN Fallback
+             </button>
           </div>
         </div>
 
@@ -262,9 +259,15 @@ const Home: React.FC = () => {
 
       <CameraModal 
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onCapture={() => {}}
-        onAuthSuccess={(emp) => { setLastUser({name: emp.name, id: emp.id}); setShowSuccessModal(true); setIsModalOpen(false); }}
-        title={modalAction === AttendanceAction.GATE_OUT ? 'GATE PASS' : `STAFF AUTHENTICATION`}
-        isProcessing={isProcessing} status={status}
+        onAuthSuccess={(emp, dur, act) => { 
+            setLastUser({name: emp.name, id: emp.id}); 
+            setLastDuration(dur);
+            setModalAction(act || modalAction);
+            setShowSuccessModal(true); 
+            setIsModalOpen(false); 
+        }}
+        title={modalAction === AttendanceAction.GATE_OUT || modalAction === AttendanceAction.GATE_IN ? 'GATE PASS PROTOCOL' : `STAFF AUTHENTICATION`}
+        isProcessing={false} status={'idle'}
       />
       <VisitorModal isOpen={isVisitorModalOpen} onClose={() => setIsVisitorModalOpen(false)} />
     </div>

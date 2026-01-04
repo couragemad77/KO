@@ -1,11 +1,12 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { Search, ArrowRight, Download, CheckCircle2, AlertCircle, Truck, Calendar, Trash2, Filter, ChevronDown, LogIn, LogOut, Clock } from 'lucide-react';
-import { AttendanceLog, AttendanceSession, AttendanceAction, LogStatus } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Search, ArrowRight, Download, CheckCircle2, Trash2, LogIn, LogOut } from 'lucide-react';
+import { AttendanceLog, AttendanceSession, Employee } from '../types';
 import { dataService } from '../services/dataService';
 
 interface StaffLogsProps {
   logs: AttendanceLog[];
+  employees: Employee[]; // Added to allow sync session building
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   activeFilter: 'ALL' | 'EARLY' | 'LATE';
@@ -20,26 +21,21 @@ type DateRange = 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL';
 
 const StaffLogs: React.FC<StaffLogsProps> = ({ 
   logs, 
+  employees,
   searchQuery, 
   setSearchQuery, 
-  activeFilter, 
-  setActiveFilter, 
   onReportOpen,
   onWipeLogs,
-  highlightedId,
   handleSuggestionClick
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>('ALL');
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      const s = await dataService.getAttendanceSessions(logs);
-      setSessions(s.filter(sess => sess.type === 'EMPLOYEE'));
-    };
-    fetchSessions();
-  }, [logs]);
+  // Compute sessions synchronously from props
+  const sessions = useMemo(() => {
+    const allSessions = dataService.buildSessions(logs, employees);
+    return allSessions.filter(sess => sess.type === 'EMPLOYEE');
+  }, [logs, employees]);
 
   const filteredSessions = useMemo(() => {
     const now = new Date();

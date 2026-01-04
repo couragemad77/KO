@@ -59,6 +59,7 @@ export interface Employee {
   imageId?: string; 
   createdAt: number;
   outsideWorkUntil?: number | null;
+  totalDaysWorked?: number; // New: Tracking lifetime days
 }
 
 export interface Visitor {

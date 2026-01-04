@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, Trash2, Edit3, X, AlertCircle, Loader2, QrCode, Download, Fingerprint, Key, Filter, SortAsc, SortDesc, Cpu } from 'lucide-react';
+import { Search, Trash2, Edit3, X, AlertCircle, Loader2, QrCode, Download, Fingerprint, Key, Filter, SortAsc, SortDesc, Cpu, Calendar } from 'lucide-react';
 import { Employee, Department } from '../types';
 import { db } from '../backend/firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -36,7 +36,6 @@ const StaffDirectory: React.FC<StaffDirectoryProps> = ({
   
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [biometricStatus, setBiometricStatus] = useState<{msg: string, loading: boolean} | null>(null);
 
   const availableDepartments = useMemo(() => {
@@ -246,6 +245,7 @@ const StaffDirectory: React.FC<StaffDirectoryProps> = ({
             <tr>
               <th className="px-8 py-5 text-[10px] font-black text-black uppercase tracking-widest">Identity</th>
               <th className="px-8 py-5 text-[10px] font-black text-black uppercase tracking-widest">Auth Data</th>
+              <th className="px-8 py-5 text-[10px] font-black text-black uppercase tracking-widest text-center">Days Worked</th>
               <th className="px-8 py-5 text-[10px] font-black text-black uppercase tracking-widest text-center">QR Pass</th>
               <th className="px-8 py-5 text-[10px] font-black text-black uppercase tracking-widest text-right">Actions</th>
             </tr>
@@ -266,6 +266,11 @@ const StaffDirectory: React.FC<StaffDirectoryProps> = ({
                       <Key size={14}/> ID: {emp.pin}
                     </span>
                   </div>
+                </td>
+                <td className="px-8 py-5 text-center">
+                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      <Calendar size={12}/> {emp.totalDaysWorked || 0} Days
+                   </div>
                 </td>
                 <td className="px-8 py-5 text-center">
                   <button onClick={() => downloadQrCode(emp)} className="p-3 bg-slate-100 hover:bg-black hover:text-white rounded-2xl transition-all border border-slate-200 inline-flex items-center gap-3 group/qr shadow-sm">

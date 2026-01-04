@@ -1,44 +1,55 @@
 
-# Local Setup: Web App + Biometric Bridge
+# Local Deployment Guide: Biometric System
 
-Follow these steps to run the system on your local machine using the **192.168.137.x** network.
+This guide explains how to run the app on your local machine (`192.168.137.1`) and connect it to your physical ZKTeco F22 hardware.
 
-## 1. Network Preparation (The PC)
-Your PC is the server. It must have the IP `192.168.137.1`.
-- Go to Network Settings -> Ethernet Adapter -> IPv4 Properties.
-- Set IP: `192.168.137.1`
-- Subnet: `255.255.255.0`
-- Gateway: Leave blank or set to your router.
+## 1. Prerequisites
+- **Node.js installed**: [Download here](https://nodejs.org/)
+- **Firebase Service Account**:
+  1. Go to your [Firebase Console](https://console.firebase.google.com/).
+  2. Select your project -> **Project Settings** -> **Service Accounts**.
+  3. Click **Generate New Private Key**.
+  4. Rename the downloaded file to `serviceAccountKey.json`.
+  5. Place it in the project root folder.
 
-## 2. Configure the F22 Hardware
-Access the F22 Menu (M/OK):
-- **Comm. Settings -> IP Address**: `192.168.137.10`
-- **Comm. Settings -> Subnet Mask**: `255.255.255.0`
-- **Comm. Settings -> Gateway**: `192.168.137.1`
-- **Comm. Settings -> Cloud Server Setting**:
-  - Server Address: `192.168.137.1`
-  - Server Port: `80`
-  - HTTPS: `OFF`
+## 2. PC Network Setup
+Your computer must be the static gateway for the device.
+1. Open **Network & Internet Settings** -> **Ethernet** -> **IP Settings**.
+2. Edit IP settings to **Manual**.
+3. Set IPv4: `192.168.137.1`
+4. Subnet Mask: `255.255.255.0`
+5. Gateway: Leave blank (unless you have a router at `.1`).
 
-## 3. Run the Bridge Server
-1. Open terminal in the project folder.
-2. Ensure `serviceAccountKey.json` (from Firebase) is present.
-3. Run: `npm install express firebase-admin`
-4. Run: `node local-biometric-server.js` (Run as Administrator).
+## 3. F22 Device Configuration
+Enter the F22 Menu (M/OK):
+1. **Comm. Settings** -> **Ethernet**:
+   - IP Address: `192.168.137.10`
+   - Subnet Mask: `255.255.255.0`
+   - Gateway: `192.168.137.1`
+2. **Comm. Settings** -> **Cloud Server Setting**:
+   - Server Address: `192.168.137.1`
+   - Server Port: `80`
+   - HTTPS: `OFF`
 
-## 4. Run the Web App
-1. Open another terminal in the project folder.
-2. Run: `npx serve .`
-3. Open `http://localhost:3000` in your browser.
+## 4. Launching the System
 
-## 5. Testing the Flow
-1. **Enrollment**:
-   - Go to Admin -> Employee List.
-   - Create an employee with PIN `101`.
-   - Edit the employee and click **Initiate Remote Enrollment**.
-   - Watch the Bridge Server console; it will send the command.
-   - The F22 will beep and say "Please press finger".
-2. **Attendance**:
-   - Scan the registered finger on the F22.
-   - The Bridge Server will log: `[SUCCESS] Name marked LOGIN`.
-   - The Web App Home Screen will immediately show the Success notification.
+### A. Start the Bridge Server
+Open a terminal (As Administrator) in the project folder:
+```bash
+npm install express firebase-admin
+node local-biometric-server.js
+```
+*You should see: "✔ Firebase Cloud Connection: ACTIVE"*
+
+### B. Start the Web App
+Open another terminal:
+```bash
+npx serve .
+```
+*Open `http://localhost:3000` in your browser.*
+
+## 5. Verification Checklist
+1. **Register Employee**: In the Web App Admin, create a user with PIN `1001`.
+2. **Remote Enroll**: Edit that user and click "Initiate Remote Enrollment". The F22 should beep and say "Please press finger".
+3. **Scan Finger**: Scan the finger 3 times.
+4. **Auth Test**: Scan the finger again. The Bridge Console will log `[SUCCESS]`, and the Web App Home Screen will show the Success Modal instantly.

@@ -16,10 +16,9 @@ import {
   Truck,
   X,
   Search,
-  CheckCircle2,
-  Clock
+  CheckCircle2
 } from 'lucide-react';
-import { Employee, AttendanceLog, AttendanceAction, SystemSettings } from '../types';
+import { Employee, AttendanceLog, AttendanceAction, SystemSettings, LogStatus } from '../types';
 
 interface AdminOverviewProps {
   employees: Employee[];
@@ -36,53 +35,110 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({ employees, logs, onQuickA
 
   const stats = useMemo(() => {
     const now = Date.now();
-    const today = new Date().setHours(0,0,0,0);
-    const todayLogs = logs.filter(l => new Date(l.timestamp).setHours(0,0,0,0) === today);
-    
-    // Physical or auto-generated logins count as Present
-    const presentIds = new Set(todayLogs.filter(l => l.action === AttendanceAction.LOGIN).map(l => l.subjectId));
-    
-    // Status flag for current Outside Work assignment
-    const outsideIds = new Set(employees.filter(e => e.outsideWorkUntil && e.outsideWorkUntil > now).map(e => e.id));
+
+    // Normalization helper for varied data formats (Seconds, MS, Strings, Firestore)
+    const normalizeTs = (ts: any): number => {
+      if (!ts) return 0;
+      if (typeof ts === 'number') return ts < 1e12 ? ts * 1000 : ts;
+      if (typeof ts === 'string') return new Date(ts).getTime();
+      if (ts?.seconds) return ts.seconds * 1000;
+      return 0;
+    };
+
+    // Calculate UTC midnight for the threshold
+    const startUTC = new Date();
+    startUTC.setUTCHours(0, 0, 0, 0);
+    const todayThreshold = startUTC.getTime();
+
+    // 1. Identify all employees who have scanned into the building today
+    const scannedToday = new Set<string>();
+    logs.forEach(log => {
+      // Filter for successful employee logs from today
+      if (log.status !== LogStatus.SUCCESS || log.type !== 'EMPLOYEE') return;
+
+      const ts = normalizeTs(log.timestamp);
+      if (ts < todayThreshold) return;
+
+      if (log.action === AttendanceAction.LOGIN) {
+        scannedToday.add(String(log.subjectId).trim());
+      }
+    });
+
+    // 2. Categorize the entire employee registry into disjoint buckets
+    const presentIds = new Set<string>();
+    const fieldDutyIds = new Set<string>();
+    const absentIds = new Set<string>();
+
+    employees.forEach(emp => {
+      const eid = String(emp.id).trim();
+      const isPresent = scannedToday.has(eid);
+      const isField = emp.outsideWorkUntil && normalizeTs(emp.outsideWorkUntil) > now;
+
+      // Logic Hierarchy: Present (Scanned) > Field Duty (Mission) > Absent (Missing)
+      if (isPresent) {
+        presentIds.add(eid);
+      } else if (isField) {
+        fieldDutyIds.add(eid);
+      } else {
+        absentIds.add(eid);
+      }
+    });
 
     const total = employees.length;
-    const present = presentIds.size;
-    const outside = outsideIds.size;
-    const absent = Math.max(0, total - present); // Correct logic: Total = Present + Absent
 
-    const presentPct = total > 0 ? (present / total) * 100 : 0;
-    const absentPct = total > 0 ? (absent / total) * 100 : 0;
-    const outsidePct = total > 0 ? (outside / total) * 100 : 0;
+    // Reliability Check: Sum of categories must equal the total registry
+    console.log(`[DASHBOARD_SYNC] Total Registry: ${total} | Present: ${presentIds.size} | Field: ${fieldDutyIds.size} | Absent: ${absentIds.size}`);
 
-    return { total, present, absent, outside, presentPct, absentPct, outsidePct, presentIds, outsideIds };
+    return {
+      total,
+      present: presentIds.size,
+      absent: absentIds.size,
+      outside: fieldDutyIds.size,
+      presentPct: total ? (presentIds.size / total) * 100 : 0,
+      absentPct: total ? (absentIds.size / total) * 100 : 0,
+      outsidePct: total ? (fieldDutyIds.size / total) * 100 : 0,
+      presentIds,
+      absentIds,
+      fieldDutyIds,
+      normalizeTs // Exported for use in chartData
+    };
   }, [employees, logs]);
 
   const chartData = useMemo(() => {
     const startH = parseInt(settings.dayStart.split(':')[0]) || 6;
     const endH = parseInt(settings.dayEnd.split(':')[0]) || 18;
-    const hoursCount = endH - startH + 1;
+    const hoursCount = Math.max(1, endH - startH + 1);
     
     const hours = Array.from({ length: hoursCount }, (_, i) => i + startH);
-    const today = new Date().setHours(0,0,0,0);
-    const todayLogs = logs.filter(l => new Date(l.timestamp).setHours(0,0,0,0) === today && l.action === AttendanceAction.LOGIN);
+    
+    // Sync UTC threshold with stats for consistency
+    const startOfTodayUTC = new Date();
+    startOfTodayUTC.setUTCHours(0, 0, 0, 0);
+    const todayThreshold = startOfTodayUTC.getTime();
+
+    const todayLogs = logs.filter(l => {
+      const ts = stats.normalizeTs(l.timestamp);
+      return ts >= todayThreshold && l.action === AttendanceAction.LOGIN && l.status === LogStatus.SUCCESS;
+    });
     
     return hours.map(h => {
       const count = todayLogs.filter(l => {
-        const logHour = new Date(l.timestamp).getHours();
-        return logHour === h;
+        // Use local hours for visualization but UTC for the threshold filter above
+        const logDate = new Date(stats.normalizeTs(l.timestamp));
+        return logDate.getHours() === h;
       }).length;
       return { hour: `${h}:00`, count };
     });
-  }, [logs, settings.dayStart, settings.dayEnd]);
+  }, [logs, settings.dayStart, settings.dayEnd, stats]);
 
   const modalList = useMemo(() => {
     let list = employees;
     if (modalMode === 'PRESENT') {
-      list = employees.filter(e => stats.presentIds.has(e.id));
+      list = employees.filter(e => stats.presentIds.has(String(e.id).trim()));
     } else if (modalMode === 'ABSENT') {
-      list = employees.filter(e => !stats.presentIds.has(e.id));
+      list = employees.filter(e => stats.absentIds.has(String(e.id).trim()));
     } else if (modalMode === 'OUTSIDE') {
-      list = employees.filter(e => stats.outsideIds.has(e.id));
+      list = employees.filter(e => stats.fieldDutyIds.has(String(e.id).trim()));
     } else if (modalMode === 'TOTAL') {
       list = employees;
     }
@@ -114,14 +170,14 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({ employees, logs, onQuickA
       `}</style>
 
       {modalMode && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white rounded-[2.5rem] w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl animate-in zoom-in duration-300 overflow-hidden border border-white/20">
             <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div>
                 <h3 className="text-xl font-black text-black uppercase tracking-tight">
                   {modalMode === 'TOTAL' ? 'Registry Overview' : modalMode === 'PRESENT' ? 'Currently Logged In' : modalMode === 'OUTSIDE' ? 'Field Duty Staff' : 'Absent Personnel'}
                 </h3>
-                <p className="text-[10px] text-black font-bold uppercase tracking-widest mt-1">Found {modalList.length} matches</p>
+                <p className="text-[10px] text-black font-bold uppercase tracking-widest mt-1">Found {modalList.length} results</p>
               </div>
               <button onClick={() => { setModalMode(null); setModalSearch(''); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-black">
                 <X size={24} />
@@ -133,7 +189,7 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({ employees, logs, onQuickA
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                   autoFocus
-                  placeholder="Filter by name..." 
+                  placeholder="Filter results..." 
                   value={modalSearch}
                   onChange={(e) => setModalSearch(e.target.value)}
                   className="w-full pl-12 pr-6 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-black transition-all"
@@ -144,26 +200,24 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({ employees, logs, onQuickA
             <div className="flex-grow overflow-y-auto p-4 md:p-8">
               <div className="grid grid-cols-1 gap-3">
                 {modalList.map(emp => {
-                  const isPresent = stats.presentIds.has(emp.id);
-                  const isOutside = stats.outsideIds.has(emp.id);
-                  const status = isPresent ? 'PRESENT' : 'ABSENT';
+                  const eid = String(emp.id).trim();
+                  const isPresent = stats.presentIds.has(eid);
+                  const isField = stats.fieldDutyIds.has(eid);
+                  const status = isPresent ? 'PRESENT' : isField ? 'FIELD DUTY' : 'ABSENT';
                   
                   return (
                     <div key={emp.id} className="p-5 bg-white border border-gray-100 rounded-2xl flex items-center justify-between hover:border-black transition-all group">
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${status === 'PRESENT' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${isPresent ? 'bg-emerald-50 text-emerald-600' : isField ? 'bg-orange-50 text-orange-600' : 'bg-gray-50 text-gray-400'}`}>
                           {emp.name.charAt(0)}
                         </div>
                         <div>
                           <p className="font-black text-black uppercase text-sm leading-tight">{emp.name}</p>
                           <p className="text-[10px] text-black font-bold uppercase mt-0.5">{emp.department}</p>
-                          {isOutside && (
-                            <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter block mt-1">On Field Duty</span>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isPresent ? 'bg-emerald-100 text-emerald-700' : isField ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}`}>
                           {status}
                         </span>
                       </div>
